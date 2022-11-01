@@ -175,7 +175,7 @@ public:
 			for ( eval.y = bboxmin.y; eval.y <= bboxmax.y; eval.y++ ) {
 
 				// for( n ) jittered samples? tbd, will need to do something to get an alpha value from the n samples
-				vec4 jitter = allowPrimitiveJitter ? BlueNoiseRef( eval ) : vec4( 0.0f );
+				vec4 jitter = allowPrimitiveJitter ? BlueNoiseRef( eval ) : vec4( 0.5f );
 				vec3 bc = BarycentricCoords( t.p0, t.p1, t.p2, vec3( float( eval.x ) + jitter.x, float( eval.y ) + jitter.y, 0.0f ) );
 
 				if ( bc.x < 0 || bc.y < 0 || bc.z < 0 ) continue; // any barycentric coord being negative means degenerate triangle or sample point outside triangle
