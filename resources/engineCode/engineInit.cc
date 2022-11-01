@@ -86,6 +86,14 @@ void engine::CreateWindowAndContext () {
 	glEnable( GL_BLEND );
 	glBlendFunc( GL_SRC_ALPHA, GL_ONE_MINUS_SRC_ALPHA );
 	cout << T_GREEN << "done." << RESET << newline;
+
+	SoftRast s( 8000, 8000 );
+
+	// s.DrawModel( "testModels/cow-nonormals.obj", "no texture", rotation( vec3( 0.0f, 0.0f, 1.0f ), pi ) * mat3( 0.1618f ), vec3( 0.0f ), vec4( 0.0f, 0.0f, 0.0f, 1.0f ) );
+	// s.DrawModel( "testModels/teapot.obj", "no texture", rotation( vec3( 0.0f, 0.0f, 1.0f ), pi * 1.1f ) * rotation( vec3( 0.0f, 1.0f, 0.0f ), 3.5f ) * mat3( 0.1618f ), vec3( 0.0f ), vec4( 0.0f, 0.0f, 0.0f, 1.0f ) );
+	// s.DrawModel( "testModels/teddy.obj", "no texture", rotation( vec3( 0.0f, 0.0f, 1.0f ), pi * 1.1f ) * rotation( vec3( 0.0f, 1.0f, 0.0f ), 3.5f ) * mat3( 0.04f ), vec3( 0.0f ), vec4( 0.0f, 0.0f, 0.0f, 1.0f ) );
+	s.DrawModel( "testModels/pumpkin_tall_10k.obj", "no texture", rotation( vec3( 0.0f, 0.0f, 1.0f ), pi * 1.1f ) * rotation( vec3( 0.0f, 1.0f, 0.0f ), 2.5f ) * mat3( 0.025f ), vec3( 1.67f, -0.5f, 0.0f ), vec4( 0.0f, 0.0f, 0.0f, 1.0f ) );
+	s.Color.Save( "test.png" );
 }
 
 void engine::DisplaySetup () {

@@ -205,25 +205,26 @@ public:
 					// Color.SetAtXY( eval.x, eval.y, { uint8_t( bc.x * 255.0f ), uint8_t( bc.y * 255.0f ), uint8_t( bc.z * 255.0f ), 255 } );
 					// Color.SetAtXY( eval.x, eval.y, { uint8_t( texCoord.x * 255.0f ), uint8_t( texCoord.y * 255.0f ), 0, 255 } );
 
-					vec4 texRef = TexRef( vec2( texCoord.x, 1.0f - texCoord.y ) );
-					if ( texRef.a == 0.0f ) continue; // reject zero alpha samples - still need to blend
+					// vec4 texRef = TexRef( vec2( texCoord.x, 1.0f - texCoord.y ) );
+					// if ( texRef.a == 0.0f ) continue; // reject zero alpha samples - still need to blend
 
-					Color.SetAtXY( eval.x, eval.y, { uint8_t( texRef.x * 255 ), uint8_t( texRef.y * 255 ), uint8_t( texRef.z * 255 ), uint8_t( texRef.w * 255 ) } );
+					Color.SetAtXY( eval.x, eval.y, { uint8_t( color.x * 255 ), uint8_t( color.y * 255 ), uint8_t( color.z * 255 ), uint8_t( color.w * 255 ) } );
 					Depth.SetAtXY( eval.x, eval.y, { depth, 0.0f, 0.0f, 0.0f } );
 				}
 			}
 		}
 	}
 
-	void DrawModel ( string modelPath, string texturePath, mat3 transform, vec3 offset ) {
+	void DrawModel ( string modelPath, string texturePath, mat3 transform, vec3 offset, vec4 color ) {
 		// passing in transform means we can scale, rotate, etc, and keep the interface simple
 		objLoader o( modelPath );
 
-		LoadTex( texturePath );
+		// LoadTex( texturePath );
 
 		// cout << "image loaded " << currentTex.width << " by " << currentTex.height << newline;
 
-		for ( unsigned int i = 0; i < o.triangleIndices.size() - 80 /* exclude wheel */; i++ ) {
+		for ( unsigned int i = 0; i < o.triangleIndices.size(); i++ ) {
+
 			vec4 p0 = o.vertices[ int( o.triangleIndices[ i ].x ) ];
 			vec4 p1 = o.vertices[ int( o.triangleIndices[ i ].y ) ];
 			vec4 p2 = o.vertices[ int( o.triangleIndices[ i ].z ) ];
@@ -243,40 +244,40 @@ public:
 			t.p0 = p0x;
 			t.p1 = p1x;
 			t.p2 = p2x;
-			t.tc0 = o.texcoords[ int( o.texcoordIndices[ i ].x ) ];
-			t.tc1 = o.texcoords[ int( o.texcoordIndices[ i ].y ) ];
-			t.tc2 = o.texcoords[ int( o.texcoordIndices[ i ].z ) ];
+			// t.tc0 = o.texcoords[ int( o.texcoordIndices[ i ].x ) ];
+			// t.tc1 = o.texcoords[ int( o.texcoordIndices[ i ].y ) ];
+			// t.tc2 = o.texcoords[ int( o.texcoordIndices[ i ].z ) ];
 
 			// DrawTriangle ( p0x, p1x, p2x, vec4( 1.0f ) );
-			DrawTriangle ( t, vec4( 1.0f ) );
+			DrawTriangle ( t, color );
 		}
 
 		// wireframe
-		// for ( unsigned int i = 0; i < o.triangleIndices.size() - 80 /* exclude wheel */; i++ ) {
-		// 	vec4 p0 = o.vertices[ int( o.triangleIndices[ i ].x ) ];
-		// 	vec4 p1 = o.vertices[ int( o.triangleIndices[ i ].y ) ];
-		// 	vec4 p2 = o.vertices[ int( o.triangleIndices[ i ].z ) ];
-		// 	vec3 p0x( p0.x, p0.y, p0.z );
-		// 	vec3 p1x( p1.x, p1.y, p1.z );
-		// 	vec3 p2x( p2.x, p2.y, p2.z );
+		for ( unsigned int i = 0; i < o.triangleIndices.size(); i++ ) {
+			vec4 p0 = o.vertices[ int( o.triangleIndices[ i ].x ) ];
+			vec4 p1 = o.vertices[ int( o.triangleIndices[ i ].y ) ];
+			vec4 p2 = o.vertices[ int( o.triangleIndices[ i ].z ) ];
+			vec3 p0x( p0.x, p0.y, p0.z );
+			vec3 p1x( p1.x, p1.y, p1.z );
+			vec3 p2x( p2.x, p2.y, p2.z );
 
-		// 	const vec3 offset = vec3( 0.0, 0.0, -0.01 );
-		// 	p0x = ( transform * p0x ) + offset;
-		// 	p1x = ( transform * p1x ) + offset;
-		// 	p2x = ( transform * p2x ) + offset;
+			const vec3 offsetLocal = vec3( 0.0, 0.0, -0.003 );
+			p0x = ( transform * p0x ) + offset + offsetLocal;
+			p1x = ( transform * p1x ) + offset + offsetLocal;
+			p2x = ( transform * p2x ) + offset + offsetLocal;
 
-		// 	triangle t;
-		// 	t.p0 = p0x;
-		// 	t.p1 = p1x;
-		// 	t.p2 = p2x;
-		// 	t.tc0 = o.texcoords[ int( o.texcoordIndices[ i ].x ) ];
-		// 	t.tc1 = o.texcoords[ int( o.texcoordIndices[ i ].y ) ];
-		// 	t.tc2 = o.texcoords[ int( o.texcoordIndices[ i ].z ) ];
-		//
-		// 	DrawLine ( p0x, p1x, vec4( 1.0f ) );
-		// 	DrawLine ( p0x, p2x, vec4( 1.0f ) );
-		// 	DrawLine ( p2x, p1x, vec4( 1.0f ) );
-		// }
+			triangle t;
+			t.p0 = p0x;
+			t.p1 = p1x;
+			t.p2 = p2x;
+			// t.tc0 = o.texcoords[ int( o.texcoordIndices[ i ].x ) ];
+			// t.tc1 = o.texcoords[ int( o.texcoordIndices[ i ].y ) ];
+			// t.tc2 = o.texcoords[ int( o.texcoordIndices[ i ].z ) ];
+
+			DrawLine ( p0x, p1x, vec4( 1.0f ) );
+			DrawLine ( p0x, p2x, vec4( 1.0f ) );
+			DrawLine ( p2x, p1x, vec4( 1.0f ) );
+		}
 
 	}
 
