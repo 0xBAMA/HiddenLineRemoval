@@ -100,8 +100,56 @@ public:
 		}
 	}
 
+
 	// draw line
 	void DrawLine ( vec3 p0, vec3 p1, vec3 tc0, vec3 tc1, vec4 color ) {
+		int x0 = int( RemapRange( p0.x, -1.0f, 1.0f, 0.0f, float( width ) - 1.0f ) );
+		int y0 = int( RemapRange( p0.y, -1.0f, 1.0f, 0.0f, float( height ) - 1.0f ) );
+		int x1 = int( RemapRange( p1.x, -1.0f, 1.0f, 0.0f, float( width ) - 1.0f ) );
+		int y1 = int( RemapRange( p1.y, -1.0f, 1.0f, 0.0f, float( height ) - 1.0f ) );
+		float z0 = p0.z;
+		float z1 = p1.z;
+		bool steep = false;
+		if ( std::abs( x0 - x1 ) < std::abs( y0 - y1 ) ) {
+			std::swap( x0, y0 );
+			std::swap( x1, y1 );
+			steep = true;
+		}
+		if ( x0 > x1 ) {
+			std::swap( x0, x1 );
+			std::swap( y0, y1 );
+			std::swap( z0, z1 );
+			std::swap( tc0, tc1 );
+		}
+		int dx = x1 - x0;
+		int dy = y1 - y0;
+		int derror2 = std::abs( dy ) * 2;
+		int error2 = 0;
+		int y = y0;
+		for ( int x = x0; x <= x1; x++ ) {
+			// interpolated depth value
+			float depth = RemapRange( float( x ), float( x0 ), float( x1 ), z0, z1 );
+			if ( steep ) {
+				if ( Depth.GetAtXY( y, x ).r >= depth ) {
+					Color.SetAtXY( y, x, RGBAFromVec4( color ) );
+					Depth.SetAtXY( y, x, { depth, 0.0f, 0.0f, 0.0f } );
+				}
+			} else {
+				if ( Depth.GetAtXY( x, y ).r >= depth ) {
+					Color.SetAtXY( x, y, RGBAFromVec4( color ) );
+					Depth.SetAtXY( x, y, { depth, 0.0f, 0.0f, 0.0f } );
+				}
+			}
+			error2 += derror2;
+			if ( error2 > dx ) {
+				y += ( y1 > y0 ? 1 : -1 );
+				error2 -= dx * 2;
+			}
+		}
+	}
+
+	// draw line ( textured )
+	void DrawLine_Textured ( vec3 p0, vec3 p1, vec3 tc0, vec3 tc1, vec4 color ) {
 		int x0 = int( RemapRange( p0.x, -1.0f, 1.0f, 0.0f, float( width ) - 1.0f ) );
 		int y0 = int( RemapRange( p0.y, -1.0f, 1.0f, 0.0f, float( height ) - 1.0f ) );
 		int x1 = int( RemapRange( p1.x, -1.0f, 1.0f, 0.0f, float( width ) - 1.0f ) );
@@ -158,8 +206,8 @@ public:
 	}
 
 	struct segment {
-		ivec2 segmentStart( -1, -1 );
-		ivec2 segmentEnd( -1, -1 );
+		ivec2 segmentStart = ivec2( -1, -1 );
+		ivec2 segmentEnd = ivec2( -1, -1 );
 	};
 
 // plan for this operation:
@@ -202,7 +250,6 @@ public:
 			std::swap( x0, x1 );
 			std::swap( y0, y1 );
 			std::swap( z0, z1 );
-			std::swap( tc0, tc1 );
 		}
 		int dx = x1 - x0;
 		int dy = y1 - y0;
@@ -210,31 +257,69 @@ public:
 		int error2 = 0;
 		int y = y0;
 
-		bool lastDepthTestPassed = false;
-		// how do we want to do the state tracking?
+		enum class segmentTrackerState {
+			initialState,
+			visible,
+			occluded
+		};
+
+		segmentTrackerState state = segmentTrackerState::initialState;
+		segmentTrackerState previousState = segmentTrackerState::initialState;
+		ivec2 previousPoint = steep ? ivec2( y0, x0 ) : ivec2( x0, y0 );
+
 		std::vector< segment > segments;
+		segment currentSegment;
 
 		for ( int x = x0; x <= x1; x++ ) {
 			// interpolated depth value
 			float depth = RemapRange( float( x ), float( x0 ), float( x1 ), z0, z1 );
 			const int writeX = steep ? y : x;
 			const int writeY = steep ? x : y;
-			if ( Depth.GetAtXY( y, x ).r >= depth ) {
-				Color.SetAtXY( y, x, RGBAFromVec4( color ) );
-				Depth.SetAtXY( y, x, { depth, 0.0f, 0.0f, 0.0f } );
-
-				// segment continues, or if there was no active segment, the segment begins at this pixel
-				lastDepthTestPassed = true;
+			if ( Depth.GetAtXY( writeX, writeY ).r >= depth ) {
+				Color.SetAtXY( writeX, writeY, RGBAFromVec4( color ) );
+				Depth.SetAtXY( writeX, writeY, { depth, 0.0f, 0.0f, 0.0f } );
+				state = segmentTrackerState::visible;
 			} else {
-				// if there's no active segment, we haven't had a passed depth test for a segment since either the [ previous segment, start of line ]
-				// if there is an active segment, we know that the last step was the end of that segment, so that segment should be tied off and added to the list
-				lastDepthTestPassed = false;
+				state = segmentTrackerState::occluded;
 			}
+
+			switch( state ) {
+				case segmentTrackerState::visible:
+				switch( previousState ) {
+					case segmentTrackerState::initialState:
+						[[fallthrough]];
+					case segmentTrackerState::occluded:
+						// segment begins at current point
+						Color.SetAtXY( writeX, writeY, RGBAFromVec4( vec4( 1.0f, 0.0f, 0.0f, 1.0f ) ) );
+					break;
+					default:
+					break;
+				}
+				break;
+
+				case segmentTrackerState::occluded:
+				switch( previousState ) {
+					case segmentTrackerState::visible:
+						// segment ends at previous point, terminate and push onto vector
+						Color.SetAtXY( previousPoint.x, previousPoint.y, RGBAFromVec4( vec4( 1.0f, 1.0f, 0.0f, 1.0f ) ) );
+					break;
+					default:
+					break;
+				}
+				break;
+
+				default: // state can't ever be in segmentTrackerState::initialState
+				break;
+			}
+
 			error2 += derror2;
 			if ( error2 > dx ) {
 				y += ( y1 > y0 ? 1 : -1 );
 				error2 -= dx * 2;
 			}
+
+			previousPoint = ivec2( writeX, writeY );
+			previousState = state;
 		}
 		return segments;
 	}
@@ -292,8 +377,6 @@ public:
 				if ( Depth.GetAtXY( eval.x, eval.y ).r > depth ) {
 					// will need to do this same barycentric interpolation of texcoords, normals, etc with bc
 
-					// compute the color to write, texturing, etc, etc
-
 					// write color - start with bc as color, 1.0 alpha - eventually will need to blend with existing color buffer value
 					// Color.SetAtXY( eval.x, eval.y, { uint8_t( bc.x * 255.0f ), uint8_t( bc.y * 255.0f ), uint8_t( bc.z * 255.0f ), 255 } );
 					// Color.SetAtXY( eval.x, eval.y, { uint8_t( texCoord.x * 255.0f ), uint8_t( texCoord.y * 255.0f ), 0, 255 } );
@@ -301,8 +384,8 @@ public:
 					// vec4 texRef = TexRef( vec2( texCoord.x, 1.0f - texCoord.y ) );
 					// if ( texRef.a == 0.0f ) continue; // reject zero alpha samples - still need to blend
 
-					Color.SetAtXY( eval.x, eval.y, { uint8_t( color.x * 255 ), uint8_t( color.y * 255 ), uint8_t( color.z * 255 ), uint8_t( color.w * 255 ) } );
 					// Color.SetAtXY( eval.x, eval.y, { uint8_t( texRef.x * 255 ), uint8_t( texRef.y * 255 ), uint8_t( texRef.z * 255 ), uint8_t( texRef.w * 255 ) } );
+					Color.SetAtXY( eval.x, eval.y, { uint8_t( color.x * 255 ), uint8_t( color.y * 255 ), uint8_t( color.z * 255 ), uint8_t( color.w * 255 ) } );
 					Depth.SetAtXY( eval.x, eval.y, { depth, 0.0f, 0.0f, 0.0f } );
 				}
 			}
@@ -313,29 +396,29 @@ public:
 		// passing in transform means we can scale, rotate, etc, and keep the interface simple
 		objLoader o( modelPath );
 
-		LoadTex( texturePath );
-
-		cout << "image loaded " << currentTex.width << " by " << currentTex.height << newline;
+		if ( texturePath != string( "no texture" ) ) {
+			LoadTex( texturePath );
+			cout << "image loaded " << currentTex.width << " by " << currentTex.height << newline;
+		}
 
 		cout << "loaded " << o.triangleIndices.size() << " vertices" << newline << newline;
 
-		vec3 mins( 10000000.0f ), maxs( -10000000.0f );
-		for ( unsigned int i = 0; i < o.vertices.size(); i++ ) {
-			mins.x = std::min( mins.x, o.vertices[ i ].x );
-			maxs.x = std::max( maxs.x, o.vertices[ i ].x );
-
-			mins.y = std::min( mins.y, o.vertices[ i ].y );
-			maxs.y = std::max( maxs.y, o.vertices[ i ].y );
-
-			mins.z = std::min( mins.z, o.vertices[ i ].z );
-			maxs.z = std::max( maxs.z, o.vertices[ i ].z );
-		}
-
-		cout << "mins: " << mins.x << " " << mins.y << " " << mins.z << newline;
-		cout << "maxs: " << maxs.x << " " << maxs.y << " " << maxs.z << newline << newline;
+		// vec3 mins( 10000000.0f ), maxs( -10000000.0f );
+		// for ( unsigned int i = 0; i < o.vertices.size(); i++ ) {
+		// 	mins.x = std::min( mins.x, o.vertices[ i ].x );
+		// 	maxs.x = std::max( maxs.x, o.vertices[ i ].x );
+		//
+		// 	mins.y = std::min( mins.y, o.vertices[ i ].y );
+		// 	maxs.y = std::max( maxs.y, o.vertices[ i ].y );
+		//
+		// 	mins.z = std::min( mins.z, o.vertices[ i ].z );
+		// 	maxs.z = std::max( maxs.z, o.vertices[ i ].z );
+		// }
+		//
+		// cout << "mins: " << mins.x << " " << mins.y << " " << mins.z << newline;
+		// cout << "maxs: " << maxs.x << " " << maxs.y << " " << maxs.z << newline << newline;
 
 		for ( unsigned int i = 0; i < o.triangleIndices.size(); i++ ) {
-
 			vec4 p0 = o.vertices[ int( o.triangleIndices[ i ].x ) ];
 			vec4 p1 = o.vertices[ int( o.triangleIndices[ i ].y ) ];
 			vec4 p2 = o.vertices[ int( o.triangleIndices[ i ].z ) ];
@@ -355,13 +438,15 @@ public:
 			t.p0 = p0x;
 			t.p1 = p1x;
 			t.p2 = p2x;
-			t.tc0 = o.texcoords[ int( o.texcoordIndices[ i ].x ) ];
-			t.tc1 = o.texcoords[ int( o.texcoordIndices[ i ].y ) ];
-			t.tc2 = o.texcoords[ int( o.texcoordIndices[ i ].z ) ];
+			// t.tc0 = o.texcoords[ int( o.texcoordIndices[ i ].x ) ];
+			// t.tc1 = o.texcoords[ int( o.texcoordIndices[ i ].y ) ];
+			// t.tc2 = o.texcoords[ int( o.texcoordIndices[ i ].z ) ];
 
 			// DrawTriangle ( p0x, p1x, p2x, vec4( 1.0f ) );
 			DrawTriangle ( t, color );
 		}
+
+		cout << "finished model" << newline;
 
 		// wireframe
 		for ( unsigned int i = 0; i < o.triangleIndices.size(); i++ ) {
@@ -381,13 +466,16 @@ public:
 			t.p0 = p0x;
 			t.p1 = p1x;
 			t.p2 = p2x;
-			t.tc0 = o.texcoords[ int( o.texcoordIndices[ i ].x ) ];
-			t.tc1 = o.texcoords[ int( o.texcoordIndices[ i ].y ) ];
-			t.tc2 = o.texcoords[ int( o.texcoordIndices[ i ].z ) ];
+			// t.tc0 = o.texcoords[ int( o.texcoordIndices[ i ].x ) ];
+			// t.tc1 = o.texcoords[ int( o.texcoordIndices[ i ].y ) ];
+			// t.tc2 = o.texcoords[ int( o.texcoordIndices[ i ].z ) ];
+			// DrawLine ( p0x, p1x, t.tc0, t.tc1, vec4( 1.0f ) );
+			// DrawLine ( p0x, p2x, t.tc0, t.tc2, vec4( 1.0f ) );
+			// DrawLine ( p2x, p1x, t.tc2, t.tc1, vec4( 1.0f ) );
 
-			DrawLine ( p0x, p1x, t.tc0, t.tc1, vec4( 1.0f ) );
-			DrawLine ( p0x, p2x, t.tc0, t.tc2, vec4( 1.0f ) );
-			DrawLine ( p2x, p1x, t.tc2, t.tc1, vec4( 1.0f ) );
+			DrawLine_SegmentTrack ( p0x, p1x, vec4( 1.0f ) );
+			DrawLine_SegmentTrack ( p0x, p2x, vec4( 1.0f ) );
+			DrawLine_SegmentTrack ( p2x, p1x, vec4( 1.0f ) );
 		}
 
 	}
