@@ -164,11 +164,26 @@ public:
 
 // plan for this operation:
 	// output is a list of segments which define the visible parts of this line - those which are not occluded by the model
-		// size == 0 means the line is totally occluded
+		// size == 0 means the line is totally occluded, no part of this line is visible
 		// size >= 1 means the line is either:
 			// 1 fully exposed segment ( or one that is partially occluded on either end, e.g. starts occluded and becomes visible, or else starts visible and becomes occluded )
 				// or
 			// a series of segments, which may pass behind visible parts of the model, which block visibility and create gaps in the current line
+
+	// something which will need to be handled, because I have seen this to be an issue - if there are multiple segments with periodic behavior, this seems to be some kind of
+	// depth precision issue, where it oscillates between in front of and behind the model, where it should only be in front - for this case, I think the best handling is to
+	// say, ok, there are more than some N segments, run it again with a small additional depth bias - I think this should resolve the precision issues. And because this is
+	// going to be used to construct a 2d vector format, this depth bias will not be a factor in the accuracy of the created output - I think this solution should be pretty
+	// foolproof ( tm )
+
+	// TODO: need to learn the syntax of the SVG format, and how to dump out these segments - as I understand, it's pretty simple, and there's good tooling to make sure that
+	// the result that I've output is correct, and inspect the fine detail - krita, inkscape, etc, are good options for viewing SVGs
+
+	// I think it makes sense to probably remap the output to 0-1 or some given range for the width, and maintain the ratio of width to height so that the image doesn't create
+	// any distortion. This is something I can look at later, but I think that having the integer source data at a large resolution ( 10k+ on an edge, likely looking at closer
+	// to 20k ) will give me enough data to create a clean result, which will not cause issues when drawing it with a pen - with factors like pen width, ink bleed, etc, I
+	// think whatever small amount of imprecision that is there will be too small to actually see - I want to evaluate this as a method, and see what kind of results I get,
+	// before looking at solutions like maybe doing ray-triangle tests with a ray towards the viewer from various points along the line to determine occlusion
 
 	std::vector< segment > DrawLine_SegmentTrack ( vec3 p0, vec3 p1, vec4 color ) {
 		int x0 = int( RemapRange( p0.x, -1.0f, 1.0f, 0.0f, float( width ) - 1.0f ) );
