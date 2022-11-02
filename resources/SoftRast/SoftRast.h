@@ -101,7 +101,7 @@ public:
 	}
 
 	// draw line
-	void DrawLine ( vec3 p0, vec3 p1, vec4 color ) {
+	void DrawLine ( vec3 p0, vec3 p1, vec3 tc0, vec3 tc1, vec4 color ) {
 		int x0 = int( RemapRange( p0.x, -1.0f, 1.0f, 0.0f, float( width ) - 1.0f ) );
 		int y0 = int( RemapRange( p0.y, -1.0f, 1.0f, 0.0f, float( height ) - 1.0f ) );
 		int x1 = int( RemapRange( p1.x, -1.0f, 1.0f, 0.0f, float( width ) - 1.0f ) );
@@ -118,6 +118,7 @@ public:
 			std::swap( x0, x1 );
 			std::swap( y0, y1 );
 			std::swap( z0, z1 );
+			std::swap( tc0, tc1 );
 		}
 		int dx = x1 - x0;
 		int dy = y1 - y0;
@@ -127,6 +128,11 @@ public:
 		for ( int x = x0; x <= x1; x++ ) {
 			// interpolated depth value
 			float depth = RemapRange( float( x ), float( x0 ), float( x1 ), z0, z1 );
+			vec2 tc = vec2(
+				RemapRange( float( x ), float( x0 ), float( x1 ), tc0.x, tc1.x ),
+				RemapRange( float( x ), float( x0 ), float( x1 ), tc0.y, tc1.y )
+			);
+			color = TexRef( vec2( tc.x, 1.0f - tc.y ) );
 			if ( steep ) {
 				if ( Depth.GetAtXY( y, x ).r >= depth ) {
 					Color.SetAtXY( y, x, RGBAFromVec4( color ) );
@@ -209,6 +215,7 @@ public:
 					// if ( texRef.a == 0.0f ) continue; // reject zero alpha samples - still need to blend
 
 					Color.SetAtXY( eval.x, eval.y, { uint8_t( color.x * 255 ), uint8_t( color.y * 255 ), uint8_t( color.z * 255 ), uint8_t( color.w * 255 ) } );
+					// Color.SetAtXY( eval.x, eval.y, { uint8_t( texRef.x * 255 ), uint8_t( texRef.y * 255 ), uint8_t( texRef.z * 255 ), uint8_t( texRef.w * 255 ) } );
 					Depth.SetAtXY( eval.x, eval.y, { depth, 0.0f, 0.0f, 0.0f } );
 				}
 			}
@@ -219,9 +226,26 @@ public:
 		// passing in transform means we can scale, rotate, etc, and keep the interface simple
 		objLoader o( modelPath );
 
-		// LoadTex( texturePath );
+		LoadTex( texturePath );
 
-		// cout << "image loaded " << currentTex.width << " by " << currentTex.height << newline;
+		cout << "image loaded " << currentTex.width << " by " << currentTex.height << newline;
+
+		cout << "loaded " << o.triangleIndices.size() << " vertices" << newline << newline;
+
+		vec3 mins( 10000000.0f ), maxs( -10000000.0f );
+		for ( unsigned int i = 0; i < o.vertices.size(); i++ ) {
+			mins.x = std::min( mins.x, o.vertices[ i ].x );
+			maxs.x = std::max( maxs.x, o.vertices[ i ].x );
+
+			mins.y = std::min( mins.y, o.vertices[ i ].y );
+			maxs.y = std::max( maxs.y, o.vertices[ i ].y );
+
+			mins.z = std::min( mins.z, o.vertices[ i ].z );
+			maxs.z = std::max( maxs.z, o.vertices[ i ].z );
+		}
+
+		cout << "mins: " << mins.x << " " << mins.y << " " << mins.z << newline;
+		cout << "maxs: " << maxs.x << " " << maxs.y << " " << maxs.z << newline << newline;
 
 		for ( unsigned int i = 0; i < o.triangleIndices.size(); i++ ) {
 
@@ -244,9 +268,9 @@ public:
 			t.p0 = p0x;
 			t.p1 = p1x;
 			t.p2 = p2x;
-			// t.tc0 = o.texcoords[ int( o.texcoordIndices[ i ].x ) ];
-			// t.tc1 = o.texcoords[ int( o.texcoordIndices[ i ].y ) ];
-			// t.tc2 = o.texcoords[ int( o.texcoordIndices[ i ].z ) ];
+			t.tc0 = o.texcoords[ int( o.texcoordIndices[ i ].x ) ];
+			t.tc1 = o.texcoords[ int( o.texcoordIndices[ i ].y ) ];
+			t.tc2 = o.texcoords[ int( o.texcoordIndices[ i ].z ) ];
 
 			// DrawTriangle ( p0x, p1x, p2x, vec4( 1.0f ) );
 			DrawTriangle ( t, color );
@@ -270,13 +294,13 @@ public:
 			t.p0 = p0x;
 			t.p1 = p1x;
 			t.p2 = p2x;
-			// t.tc0 = o.texcoords[ int( o.texcoordIndices[ i ].x ) ];
-			// t.tc1 = o.texcoords[ int( o.texcoordIndices[ i ].y ) ];
-			// t.tc2 = o.texcoords[ int( o.texcoordIndices[ i ].z ) ];
+			t.tc0 = o.texcoords[ int( o.texcoordIndices[ i ].x ) ];
+			t.tc1 = o.texcoords[ int( o.texcoordIndices[ i ].y ) ];
+			t.tc2 = o.texcoords[ int( o.texcoordIndices[ i ].z ) ];
 
-			DrawLine ( p0x, p1x, vec4( 1.0f ) );
-			DrawLine ( p0x, p2x, vec4( 1.0f ) );
-			DrawLine ( p2x, p1x, vec4( 1.0f ) );
+			DrawLine ( p0x, p1x, t.tc0, t.tc1, vec4( 1.0f ) );
+			DrawLine ( p0x, p2x, t.tc0, t.tc2, vec4( 1.0f ) );
+			DrawLine ( p2x, p1x, t.tc2, t.tc1, vec4( 1.0f ) );
 		}
 
 	}
