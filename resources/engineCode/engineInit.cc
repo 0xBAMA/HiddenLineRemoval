@@ -87,12 +87,13 @@ void engine::CreateWindowAndContext () {
 	glBlendFunc( GL_SRC_ALPHA, GL_ONE_MINUS_SRC_ALPHA );
 	cout << T_GREEN << "done." << RESET << newline;
 
-	SoftRast s( 14000, 14000 );
+	SoftRast s( 9000, 9000 );
 
+	s.DrawModel( "testModels/dam1.obj", "no texture", rotation( vec3( 0.0f, 0.0f, 1.0f ), pi / 3.0f ) * rotation( vec3( 1.0f, 1.0f, 0.0f ), -3.5f ) * mat3( 0.02f ), vec3( 0.0f ), vec4( 0.0f, 0.0f, 0.0f, 1.0f ) );
 	// s.DrawModel( "testModels/cow-nonormals.obj", "no texture", rotation( vec3( 0.0f, 0.0f, 1.0f ), pi ) * mat3( 0.1618f ), vec3( 0.0f ), vec4( 0.0f, 0.0f, 0.0f, 1.0f ) );
 	// s.DrawModel( "testModels/teapot.obj", "no texture", rotation( vec3( 0.0f, 0.0f, 1.0f ), pi * 1.1f ) * rotation( vec3( 0.0f, 1.0f, 0.0f ), 3.5f ) * mat3( 0.1618f ), vec3( 0.0f ), vec4( 0.0f, 0.0f, 0.0f, 1.0f ) );
 	// s.DrawModel( "testModels/teddy.obj", "no texture", rotation( vec3( 0.0f, 0.0f, 1.0f ), pi * 1.1f ) * rotation( vec3( 0.0f, 1.0f, 0.0f ), 3.5f ) * mat3( 0.04f ), vec3( 0.0f ), vec4( 0.0f, 0.0f, 0.0f, 1.0f ) );
-	s.DrawModel( "testModels/pumpkin_tall_10k.obj", "no texture", rotation( vec3( 0.0f, 0.0f, 1.0f ), pi * 1.1f ) * rotation( vec3( 0.0f, 1.0f, 0.0f ), 2.5f ) * mat3( 0.025f ), vec3( 1.67f, -0.5f, 0.0f ), vec4( 0.0f, 0.0f, 0.0f, 1.0f ) );
+	// s.DrawModel( "testModels/pumpkin_tall_10k.obj", "no texture", rotation( vec3( 0.0f, 0.0f, 1.0f ), pi * 1.1f ) * rotation( vec3( 0.0f, 1.0f, 0.0f ), 2.5f ) * mat3( 0.025f ), vec3( 1.67f, -0.5f, 0.0f ), vec4( 0.0f, 0.0f, 0.0f, 1.0f ) );
 	// for 800x800
 	// s.DrawModel( "testModels/pumpkin_tall_10k.obj", "no texture", rotation( vec3( 0.0f, 0.0f, 1.0f ), pi * 1.1 ) * rotation( vec3( 0.0f, 1.0f, 0.0f ), 2.5f ) * mat3( 0.025f ), vec3( 1.67f, -0.5f, 0.0f ), vec4( 0.7f, 0.4f, 0.1f, 1.0f ) );
 	s.Color.Save( "test.png" );
