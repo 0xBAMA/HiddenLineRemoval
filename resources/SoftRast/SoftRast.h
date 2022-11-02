@@ -126,13 +126,18 @@ public:
 		int error2 = 0;
 		int y = y0;
 		for ( int x = x0; x <= x1; x++ ) {
+
+			constexpr bool texSampleLine = false;
+			if ( texSampleLine ) {
+				vec2 tc = vec2( // interpolating texcoord from the two ends
+					RemapRange( float( x ), float( x0 ), float( x1 ), tc0.x, tc1.x ),
+					RemapRange( float( x ), float( x0 ), float( x1 ), tc0.y, tc1.y )
+				);
+				color = TexRef( vec2( tc.x, 1.0f - tc.y ) );
+			}
+
 			// interpolated depth value
 			float depth = RemapRange( float( x ), float( x0 ), float( x1 ), z0, z1 );
-			vec2 tc = vec2(
-				RemapRange( float( x ), float( x0 ), float( x1 ), tc0.x, tc1.x ),
-				RemapRange( float( x ), float( x0 ), float( x1 ), tc0.y, tc1.y )
-			);
-			color = TexRef( vec2( tc.x, 1.0f - tc.y ) );
 			if ( steep ) {
 				if ( Depth.GetAtXY( y, x ).r >= depth ) {
 					Color.SetAtXY( y, x, RGBAFromVec4( color ) );
@@ -150,6 +155,73 @@ public:
 				error2 -= dx * 2;
 			}
 		}
+	}
+
+	struct segment {
+		ivec2 segmentStart( -1, -1 );
+		ivec2 segmentEnd( -1, -1 );
+	};
+
+// plan for this operation:
+	// output is a list of segments which define the visible parts of this line - those which are not occluded by the model
+		// size == 0 means the line is totally occluded
+		// size >= 1 means the line is either:
+			// 1 fully exposed segment ( or one that is partially occluded on either end, e.g. starts occluded and becomes visible, or else starts visible and becomes occluded )
+				// or
+			// a series of segments, which may pass behind visible parts of the model, which block visibility and create gaps in the current line
+
+	std::vector< segment > DrawLine_SegmentTrack ( vec3 p0, vec3 p1, vec4 color ) {
+		int x0 = int( RemapRange( p0.x, -1.0f, 1.0f, 0.0f, float( width ) - 1.0f ) );
+		int y0 = int( RemapRange( p0.y, -1.0f, 1.0f, 0.0f, float( height ) - 1.0f ) );
+		int x1 = int( RemapRange( p1.x, -1.0f, 1.0f, 0.0f, float( width ) - 1.0f ) );
+		int y1 = int( RemapRange( p1.y, -1.0f, 1.0f, 0.0f, float( height ) - 1.0f ) );
+		float z0 = p0.z;
+		float z1 = p1.z;
+		bool steep = false;
+		if ( std::abs( x0 - x1 ) < std::abs( y0 - y1 ) ) {
+			std::swap( x0, y0 );
+			std::swap( x1, y1 );
+			steep = true;
+		}
+		if ( x0 > x1 ) {
+			std::swap( x0, x1 );
+			std::swap( y0, y1 );
+			std::swap( z0, z1 );
+			std::swap( tc0, tc1 );
+		}
+		int dx = x1 - x0;
+		int dy = y1 - y0;
+		int derror2 = std::abs( dy ) * 2;
+		int error2 = 0;
+		int y = y0;
+
+		bool lastDepthTestPassed = false;
+		// how do we want to do the state tracking?
+		std::vector< segment > segments;
+
+		for ( int x = x0; x <= x1; x++ ) {
+			// interpolated depth value
+			float depth = RemapRange( float( x ), float( x0 ), float( x1 ), z0, z1 );
+			const int writeX = steep ? y : x;
+			const int writeY = steep ? x : y;
+			if ( Depth.GetAtXY( y, x ).r >= depth ) {
+				Color.SetAtXY( y, x, RGBAFromVec4( color ) );
+				Depth.SetAtXY( y, x, { depth, 0.0f, 0.0f, 0.0f } );
+
+				// segment continues, or if there was no active segment, the segment begins at this pixel
+				lastDepthTestPassed = true;
+			} else {
+				// if there's no active segment, we haven't had a passed depth test for a segment since either the [ previous segment, start of line ]
+				// if there is an active segment, we know that the last step was the end of that segment, so that segment should be tied off and added to the list
+				lastDepthTestPassed = false;
+			}
+			error2 += derror2;
+			if ( error2 > dx ) {
+				y += ( y1 > y0 ? 1 : -1 );
+				error2 -= dx * 2;
+			}
+		}
+		return segments;
 	}
 
 	// draw triangle
