@@ -286,8 +286,7 @@ public:
 			switch( state ) {
 				case segmentTrackerState::visible:
 				switch( previousState ) {
-					case segmentTrackerState::initialState:
-						[[fallthrough]];
+					case segmentTrackerState::initialState: [[fallthrough]];
 					case segmentTrackerState::occluded:
 						// segment begins at current point
 						Color.SetAtXY( writeX, writeY, RGBAFromVec4( vec4( 1.0f, 0.0f, 0.0f, 1.0f ) ) );
@@ -448,6 +447,13 @@ public:
 
 		cout << "finished model" << newline;
 
+	// basic example svg - not worth getting into tinyxml usage, this should be fairly simple to implement
+		// <svg width="391" height="391" viewBox="-70.5 -70.5 391 391"> // viewbox is not strictly neccesary
+		// 	<line x1="50" y1="50" x2="200" y2="200" stroke="blue" stroke-width="4" />
+		// </svg>
+
+		fileOut << "<svg width=\"" << width << "\" height=\"" << height << "\" >" << newline;
+
 		// wireframe
 		for ( unsigned int i = 0; i < o.triangleIndices.size(); i++ ) {
 			vec4 p0 = o.vertices[ int( o.triangleIndices[ i ].x ) ];
@@ -473,12 +479,40 @@ public:
 			// DrawLine ( p0x, p2x, t.tc0, t.tc2, vec4( 1.0f ) );
 			// DrawLine ( p2x, p1x, t.tc2, t.tc1, vec4( 1.0f ) );
 
-			DrawLine_SegmentTrack ( p0x, p1x, vec4( 1.0f ) );
-			DrawLine_SegmentTrack ( p0x, p2x, vec4( 1.0f ) );
-			DrawLine_SegmentTrack ( p2x, p1x, vec4( 1.0f ) );
+			// <line x1="50" y1="50" x2="200" y2="200" stroke="blue" stroke-width="4" />
+
+			// first line segment of the triangle
+			std::vector< segment > temp = DrawLine_SegmentTrack ( p0x, p1x, vec4( 1.0f ) );
+			for ( auto& segment : temp ) {
+				fileOut << "<line x1=\"" << segment.segmentStart.x << "\" y1=\"" << segment.segmentStart.y
+						<< "x2=\"" << segment.segmentEnd.x << "\" y2=\"" << segment.segmentEnd.y
+						<< "stroke=\"blue\" stroke-width=\"4\" />" << newline;
+			}
+
+			temp = DrawLine_SegmentTrack ( p0x, p2x, vec4( 1.0f ) );
+			for ( auto& segment : temp ) {
+				fileOut << "<line x1=\"" << segment.segmentStart.x << "\" y1=\"" << segment.segmentStart.y
+	 					<< "x2=\"" << segment.segmentEnd.x << "\" y2=\"" << segment.segmentEnd.y
+						<< "stroke=\"blue\" stroke-width=\"4\" />" << newline;
+			}
+
+			temp = DrawLine_SegmentTrack ( p2x, p1x, vec4( 1.0f ) );
+			for ( auto& segment : temp ) {
+				fileOut << "<line x1=\"" << segment.segmentStart.x << "\" y1=\"" << segment.segmentStart.y
+	 					<< "x2=\"" << segment.segmentEnd.x << "\" y2=\"" << segment.segmentEnd.y
+						<< "stroke=\"blue\" stroke-width=\"4\" />" << newline;
+			}
 		}
 
+		fileOut << "</svg>";
+
+		// write file to disk
+		std::ofstream f( "out.svg" );
+		f << fileOut.str();
+		f.close();
 	}
+
+	std::stringstream fileOut;
 
 	// dimensions
 	uint32_t width = 0;
