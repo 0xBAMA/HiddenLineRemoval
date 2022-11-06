@@ -292,6 +292,11 @@ public:
 						currentSegment.segmentStart = ivec2( writeX, writeY );
 						Color.SetAtXY( writeX, writeY, RGBAFromVec4( vec4( 1.0f, 0.0f, 0.0f, 1.0f ) ) );
 					break;
+					case segmentTrackerState::visible:
+						if ( x == x1 ) {
+							currentSegment.segmentEnd = ivec2( writeX, writeY );
+							segments.push_back( currentSegment );
+						}
 					default:
 					break;
 				}
@@ -323,6 +328,12 @@ public:
 			previousPoint = ivec2( writeX, writeY );
 			previousState = state;
 		}
+
+		// if ( currentSegment.segmentEnd == ivec2( -1, -1 ) ) {
+		// 	currentSegment.segmentEnd = previousPoint;
+		// 	segments.push_back( currentSegment );
+		// }
+
 		return segments;
 	}
 
