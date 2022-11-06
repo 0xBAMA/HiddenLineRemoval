@@ -289,6 +289,7 @@ public:
 					case segmentTrackerState::initialState: [[fallthrough]];
 					case segmentTrackerState::occluded:
 						// segment begins at current point
+						currentSegment.segmentStart = ivec2( writeX, writeY );
 						Color.SetAtXY( writeX, writeY, RGBAFromVec4( vec4( 1.0f, 0.0f, 0.0f, 1.0f ) ) );
 					break;
 					default:
@@ -300,6 +301,8 @@ public:
 				switch( previousState ) {
 					case segmentTrackerState::visible:
 						// segment ends at previous point, terminate and push onto vector
+						currentSegment.segmentEnd = previousPoint;
+						segments.push_back( currentSegment );
 						Color.SetAtXY( previousPoint.x, previousPoint.y, RGBAFromVec4( vec4( 1.0f, 1.0f, 0.0f, 1.0f ) ) );
 					break;
 					default:
@@ -485,22 +488,22 @@ public:
 			std::vector< segment > temp = DrawLine_SegmentTrack ( p0x, p1x, vec4( 1.0f ) );
 			for ( auto& segment : temp ) {
 				fileOut << "<line x1=\"" << segment.segmentStart.x << "\" y1=\"" << segment.segmentStart.y
-						<< "x2=\"" << segment.segmentEnd.x << "\" y2=\"" << segment.segmentEnd.y
-						<< "stroke=\"blue\" stroke-width=\"4\" />" << newline;
+						<< "\" x2=\"" << segment.segmentEnd.x << "\" y2=\"" << segment.segmentEnd.y
+						<< "\" stroke=\"blue\" stroke-width=\"4\" />" << newline;
 			}
 
 			temp = DrawLine_SegmentTrack ( p0x, p2x, vec4( 1.0f ) );
 			for ( auto& segment : temp ) {
 				fileOut << "<line x1=\"" << segment.segmentStart.x << "\" y1=\"" << segment.segmentStart.y
-	 					<< "x2=\"" << segment.segmentEnd.x << "\" y2=\"" << segment.segmentEnd.y
-						<< "stroke=\"blue\" stroke-width=\"4\" />" << newline;
+	 					<< "\" x2=\"" << segment.segmentEnd.x << "\" y2=\"" << segment.segmentEnd.y
+						<< "\" stroke=\"blue\" stroke-width=\"4\" />" << newline;
 			}
 
 			temp = DrawLine_SegmentTrack ( p2x, p1x, vec4( 1.0f ) );
 			for ( auto& segment : temp ) {
 				fileOut << "<line x1=\"" << segment.segmentStart.x << "\" y1=\"" << segment.segmentStart.y
-	 					<< "x2=\"" << segment.segmentEnd.x << "\" y2=\"" << segment.segmentEnd.y
-						<< "stroke=\"blue\" stroke-width=\"4\" />" << newline;
+	 					<< "\" x2=\"" << segment.segmentEnd.x << "\" y2=\"" << segment.segmentEnd.y
+						<< "\" stroke=\"blue\" stroke-width=\"4\" />" << newline;
 			}
 		}
 
