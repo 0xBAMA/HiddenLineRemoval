@@ -486,6 +486,7 @@ public:
 			t.p0 = p0x;
 			t.p1 = p1x;
 			t.p2 = p2x;
+
 			// t.tc0 = o.texcoords[ int( o.texcoordIndices[ i ].x ) ];
 			// t.tc1 = o.texcoords[ int( o.texcoordIndices[ i ].y ) ];
 			// t.tc2 = o.texcoords[ int( o.texcoordIndices[ i ].z ) ];
@@ -496,21 +497,36 @@ public:
 			// <line x1="50" y1="50" x2="200" y2="200" stroke="blue" stroke-width="4" />
 
 			// first line segment of the triangle
-			std::vector< segment > temp = DrawLine_SegmentTrack ( p0x, p1x, vec4( 1.0f ) );
+			std::vector< segment > temp;
+			const int segmentThreshold = 5;
+
+			int n = 0;
+			do {
+				temp = DrawLine_SegmentTrack ( p0x + float( n ) * offsetLocal, p1x + float( n ) * offsetLocal, vec4( 1.0f ) );
+				n++;
+			} while ( temp.size() > segmentThreshold );
 			for ( auto& segment : temp ) {
 				fileOut << "<line x1=\"" << segment.segmentStart.x << "\" y1=\"" << segment.segmentStart.y
 						<< "\" x2=\"" << segment.segmentEnd.x << "\" y2=\"" << segment.segmentEnd.y
 						<< "\" stroke=\"blue\" stroke-width=\"4\" />" << newline;
 			}
 
-			temp = DrawLine_SegmentTrack ( p0x, p2x, vec4( 1.0f ) );
+			n = 0;
+			do {
+				temp = DrawLine_SegmentTrack ( p0x + float( n ) * offsetLocal, p2x + float( n ) * offsetLocal, vec4( 1.0f ) );
+				n++;
+			} while ( temp.size() > segmentThreshold );
 			for ( auto& segment : temp ) {
 				fileOut << "<line x1=\"" << segment.segmentStart.x << "\" y1=\"" << segment.segmentStart.y
-	 					<< "\" x2=\"" << segment.segmentEnd.x << "\" y2=\"" << segment.segmentEnd.y
+						<< "\" x2=\"" << segment.segmentEnd.x << "\" y2=\"" << segment.segmentEnd.y
 						<< "\" stroke=\"blue\" stroke-width=\"4\" />" << newline;
 			}
 
-			temp = DrawLine_SegmentTrack ( p2x, p1x, vec4( 1.0f ) );
+			n = 0;
+			do {
+				temp = DrawLine_SegmentTrack ( p2x + float( n ) * offsetLocal, p1x + float( n ) * offsetLocal, vec4( 1.0f ) );
+				n++;
+			} while ( temp.size() > segmentThreshold );
 			for ( auto& segment : temp ) {
 				fileOut << "<line x1=\"" << segment.segmentStart.x << "\" y1=\"" << segment.segmentStart.y
 	 					<< "\" x2=\"" << segment.segmentEnd.x << "\" y2=\"" << segment.segmentEnd.y
